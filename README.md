@@ -1,10 +1,10 @@
-# LangChain QA Challenge
+# LangChain QA Application
 
 A chain that takes a user's **question** and a **context paragraph** and returns an answer using a language model.
 
-## Core Functionality (Challenge Spec)
+## Core Functionality
 
-The application provides a simple function that meets the challenge requirements:
+The application provides a simple function that meets the following requirements:
 
 ```python
 from qa_chain import answer_question
@@ -17,7 +17,7 @@ answer = answer_question(
 print(answer)  # -> "Paris" or "The capital of France is Paris."
 ```
 
-### Challenge Requirements Met
+### Requirements Met
 1. ✅ **Two inputs**: Accepts a question and context paragraph
 2. ✅ **LLM Integration**: Uses OpenAI's chat completion API via LangChain
 3. ✅ **Input preprocessing**: Normalizes whitespace and handles special characters

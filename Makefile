@@ -1,30 +1,39 @@
 # Makefile for QA Chain Project
 
+.DEFAULT_GOAL := help
+
+# Colors for output
+BLUE := \033[36m
+RESET := \033[0m
+
 .PHONY: help
 help: ## Display this help message
 	@echo "QA Chain Project - Available commands:"
 	@echo ""
-	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}' $(MAKEFILE_LIST)
+	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "$(BLUE)%-20s$(RESET) %s\n", $$1, $$2}' $(MAKEFILE_LIST)
 	@echo ""
 	@echo "Usage: make [target]"
 
-# Python environment setup
+# Environment setup
 .PHONY: venv
-venv: ## Create virtual environment
+venv: ## Create Python virtual environment (.venv)
 	python -m venv .venv
 	@echo "Virtual environment created. Activate with: source .venv/bin/activate"
 
 .PHONY: install
-install: ## Install dependencies
+install: ## Install runtime dependencies only
 	pip install -r requirements.txt
 
 .PHONY: install-dev
-install-dev: ## Install development dependencies
+install-dev: install ## Install all dependencies (runtime + development)
 	pip install -r requirements-dev.txt
 
-# Code quality checks
+.PHONY: dev
+dev: venv install-dev install-hooks ## Complete dev setup (venv, deps, hooks)
+
+# Code quality
 .PHONY: lint
-lint: ## Run linters (ruff, black --check, isort --check)
+lint: ## Check code style without changes
 	@echo "Running ruff..."
 	ruff check src/ tests/ examples/
 	@echo "Checking black formatting..."
@@ -33,41 +42,39 @@ lint: ## Run linters (ruff, black --check, isort --check)
 	isort --check-only src/ tests/ examples/
 
 .PHONY: format
-format: ## Format code with black and isort
-	@echo "Formatting with black..."
+format: ## Auto-format code (black, isort)
 	black src/ tests/ examples/
-	@echo "Sorting imports with isort..."
 	isort src/ tests/ examples/
 
 .PHONY: fix
-fix: ## Fix linting issues (ruff --fix) and format code
-	@echo "Fixing with ruff..."
+fix: ## Fix linting errors and format code
 	ruff check --fix src/ tests/ examples/
-	@echo "Formatting with black..."
-	black src/ tests/ examples/
-	@echo "Sorting imports with isort..."
-	isort src/ tests/ examples/
+	$(MAKE) format
 
 .PHONY: type-check
-type-check: ## Run type checking with mypy
+type-check: ## Check type annotations (mypy)
 	mypy src/
 
 # Testing
 .PHONY: test
-test: ## Run tests
+test: ## Run all tests
 	PYTHONPATH=src pytest tests/
 
 .PHONY: test-coverage
-test-coverage: ## Run tests with coverage report
+test-coverage: ## Run tests + generate coverage report
 	PYTHONPATH=src pytest tests/ --cov=src/qa_chain --cov-report=html --cov-report=term
 
-# Docker operations
+.PHONY: test-coverage-strict
+test-coverage-strict: ## Run tests + enforce 90% coverage
+	PYTHONPATH=src pytest tests/ --cov=src/qa_chain --cov-report=term --cov-fail-under=90
+
+# Docker
 .PHONY: docker-build
-docker-build: ## Build Docker image
+docker-build: ## Build Docker image (qa-chain:latest)
 	docker build -t qa-chain:latest .
 
 .PHONY: docker-run
-docker-run: ## Run Docker container (requires OPENAI_API_KEY)
+docker-run: ## Run example in Docker container
 	@if [ -z "$$OPENAI_API_KEY" ]; then \
 		echo "Error: OPENAI_API_KEY is not set"; \
 		exit 1; \
@@ -75,82 +82,62 @@ docker-run: ## Run Docker container (requires OPENAI_API_KEY)
 	./docker-run.sh --question "What is the capital of France?" --context "Paris is the capital of France."
 
 .PHONY: docker-compose-run
-docker-compose-run: ## Run using docker-compose (pass ARGS for custom arguments)
+docker-compose-run: ## Run with docker-compose (ARGS="--question ...")
 	docker compose run --rm qa-chain $(ARGS)
 
-.PHONY: docker-compose-up
-docker-compose-up: ## Start docker-compose services in background
-	docker compose up -d
-
-.PHONY: docker-compose-down
-docker-compose-down: ## Stop docker-compose services
-	docker compose down
-
 .PHONY: docker-clean
-docker-clean: ## Remove Docker image and compose volumes
-	docker rmi qa-chain:latest || true
-	docker compose down -v || true
+docker-clean: ## Remove Docker images and volumes
+	-docker rmi qa-chain:latest
+	-docker compose down -v
 
-# Development helpers
-.PHONY: run-example
-run-example: ## Run example (requires OPENAI_API_KEY)
+# Examples
+.PHONY: run
+run: ## Run CLI with custom args (ARGS="--question ...")
 	@if [ -z "$$OPENAI_API_KEY" ]; then \
 		echo "Error: OPENAI_API_KEY is not set"; \
 		exit 1; \
 	fi
-	python -m examples.run --question "What is the capital of France?" --context "Paris is the capital of France."
+	python -m examples.run $(ARGS)
 
+.PHONY: run-simple
+run-simple: ## Run basic example (no args needed)
+	@if [ -z "$$OPENAI_API_KEY" ]; then \
+		echo "Error: OPENAI_API_KEY is not set"; \
+		exit 1; \
+	fi
+	python examples/simple_qa.py
+
+# Cleanup
 .PHONY: clean
-clean: ## Clean up temporary files and caches
+clean: ## Clean temp files (caches, coverage, etc.)
 	find . -type d -name "__pycache__" -exec rm -rf {} +
-	find . -type f -name "*.pyc" -delete
-	find . -type f -name "*.pyo" -delete
-	find . -type f -name "*.coverage" -delete
-	rm -rf htmlcov/
-	rm -rf .pytest_cache/
-	rm -rf .mypy_cache/
-	rm -rf .ruff_cache/
+	find . -type f -name "*.py[co]" -delete
+	find . -type f -name ".coverage" -delete
+	rm -rf htmlcov/ .pytest_cache/ .mypy_cache/ .ruff_cache/
 
 .PHONY: clean-all
-clean-all: clean docker-clean ## Clean everything including Docker
+clean-all: clean docker-clean ## Full reset (temp files + Docker + venv)
 	rm -rf .venv/
 
 # Git hooks
 .PHONY: install-hooks
-install-hooks: ## Install pre-commit hooks
-	pip install pre-commit
+install-hooks: ## Install git hooks (pre-commit, pre-push)
 	pre-commit install
 	pre-commit install --hook-type pre-push
 
 .PHONY: run-hooks
-run-hooks: ## Run pre-commit hooks on all files
+run-hooks: ## Manually run all git hooks
 	pre-commit run --all-files
 
-# Combined commands
-.PHONY: dev
-dev: install-dev ## Setup development environment
-
+# Combined workflows
 .PHONY: check
-check: lint type-check test ## Run all checks (lint, type-check, test)
-
-.PHONY: all
-all: clean fix check docker-build ## Clean, fix, check, and build
-
-# CI/CD helpers
-.PHONY: ci
-ci: ## Run CI checks (lint, type-check, test)
-	@echo "Running CI checks..."
-	@make lint
-	@make type-check
-	@make test
+check: lint type-check test ## Run all validation checks
 
 .PHONY: pre-commit
-pre-commit: fix check ## Run before committing (fix and check)
+pre-commit: fix check ## Auto-fix issues before commit
 
 .PHONY: pre-push
-pre-push: ## Run pre-push validation (tests with coverage threshold)
-	@echo "Running pre-push validation..."
-	@echo "Running tests..."
-	@make test
-	@echo "Checking test coverage (minimum 90%)..."
-	PYTHONPATH=src pytest tests/ --cov=src/qa_chain --cov-report=term --cov-fail-under=90
+pre-push: test test-coverage-strict ## Validate tests + coverage before push
+
+.PHONY: ci
+ci: check test-coverage-strict ## Full CI validation suite
