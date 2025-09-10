@@ -49,6 +49,12 @@ The heart of the application is the `answer_question()` function that:
 - `max_context_chars`: Context size limit (default: 6000)
 - `enable_rate_limiting`: Toggle rate limiting (default: True)
 - `rate_limit_identifier`: User/API key identifier for rate limiting
+- `log_level`: Logging verbosity (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+- `log_format`: Output format (json or simple)
+- `log_file`: Optional log file path
+- `enable_debug_mode`: Verbose debug logging
+- `log_slow_requests`: Track slow requests
+- `log_slow_request_threshold`: Threshold for slow request alerts (seconds)
 
 ## Security Features
 
@@ -265,6 +271,22 @@ The heart of the application is the `answer_question()` function that:
 - Error tracking integration ready
 - Request tracing capability
 
+**Comprehensive Logging System**:
+- **Structured JSON Logging**: Machine-readable logs for easy parsing
+- **Request ID Tracking**: Trace requests across all components
+- **Performance Monitoring**: Automatic execution time tracking
+- **Debug Mode**: Verbose logging for development and troubleshooting
+- **Slow Request Detection**: Configurable thresholds for performance alerts
+- **Log Levels**: Standard Python levels (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+- **Flexible Output**: JSON or simple format, stderr or file-based
+
+**Debug Utilities**:
+- **Debug Context Manager**: Track execution checkpoints with timing
+- **Memory Usage Monitoring**: Track resource consumption
+- **LLM Call Tracing**: Detailed tracking of AI model interactions
+- **Debug Info Dumps**: Save detailed session information for analysis
+- **Statistics Collection**: Aggregate performance metrics
+
 ### 3. Multi-language Ready
 
 **Internationalization Prepared**:
@@ -283,6 +305,9 @@ The heart of the application is the `answer_question()` function that:
 | Rate Limiting | ✅ | ✅ | ✅ |
 | Output Sanitization | ✅ | ✅ | ✅ |
 | Azure Support | ✅ | ✅ | ✅ |
+| Structured Logging | ✅ | ✅ | ✅ |
+| Debug Mode | ✅ | ✅ | ✅ |
+| Request Tracking | ❌ | ✅ | ✅ |
 | Hot Reload | ❌ | ✅ | ✅ |
 | Interactive Docs | ❌ | ✅ | ✅ |
 | Batch Processing | ❌ | Ready | Ready |

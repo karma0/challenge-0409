@@ -30,6 +30,7 @@ Beyond the basic requirements, this implementation includes:
 - **Security**: Input validation, output sanitization, and injection protection
 - **Rate limiting**: Configurable request throttling
 - **Flexible configuration**: Temperature, model selection, and context limits
+- **Logging & Debugging**: Structured JSON logging, request tracking, and debug utilities
 - **Docker support**: Ready for containerized deployment
 - **Development tools**: Linting, testing, and pre-commit hooks
 
@@ -181,6 +182,7 @@ See [Security documentation](docs/SECURITY.md) for detailed security documentati
 - [Python Standards](docs/PYTHON_STANDARDS.md) - Documentation of Python standards compliance
 - [API Documentation](docs/API.md) - REST API endpoints and usage
 - [Security Guide](docs/SECURITY.md) - Security features and best practices
+- [Logging & Debugging](docs/LOGGING.md) - Structured logging and debug utilities
 - [Docker Guide](docs/DOCKER.md) - Container deployment instructions
 - [Spec Compliance](docs/SPEC_COMPLIANCE_SUMMARY.md) - Challenge specification compliance
 

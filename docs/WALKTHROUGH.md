@@ -6,10 +6,11 @@ This guide provides a hands-on walkthrough of the QA Chain application, demonstr
 1. [Architecture Overview](#architecture-overview)
 2. [Core Implementation Walkthrough](#core-implementation-walkthrough)
 3. [Security Implementation](#security-implementation)
-4. [API Implementation](#api-implementation)
-5. [Testing Strategy](#testing-strategy)
-6. [Running the Application](#running-the-application)
-7. [Development Workflow](#development-workflow)
+4. [Logging and Debugging](#logging-and-debugging)
+5. [API Implementation](#api-implementation)
+6. [Testing Strategy](#testing-strategy)
+7. [Running the Application](#running-the-application)
+8. [Development Workflow](#development-workflow)
 
 ## Architecture Overview
 
@@ -24,6 +25,8 @@ src/qa_chain/
 ├── preprocessing.py     # Text preprocessing utilities
 ├── rate_limiter.py      # Rate limiting implementation
 ├── prompts.py           # LangChain prompt templates
+├── logging_config.py    # Logging configuration and utilities
+├── debug_utils.py       # Debug utilities and helpers
 ├── cli.py               # Command-line interface
 └── api.py               # FastAPI REST API
 ```
@@ -170,6 +173,122 @@ class RateLimiter:
         self.window_seconds = window_seconds
         self.requests: Dict[str, List[float]] = {}
         self.lock = threading.Lock()
+```
+
+## Logging and Debugging
+
+### 1. Structured Logging System
+
+The application uses a comprehensive logging system for production observability:
+
+```python
+# src/qa_chain/logging_config.py
+class StructuredFormatter(logging.Formatter):
+    """JSON formatter for structured logging."""
+
+    def format(self, record: logging.LogRecord) -> str:
+        log_data = {
+            "timestamp": time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(record.created)),
+            "level": record.levelname,
+            "logger": record.name,
+            "message": record.getMessage(),
+            "module": record.module,
+            "function": record.funcName,
+            "line": record.lineno,
+            "request_id": request_id_var.get(),  # Thread-safe request ID
+            **getattr(record, "extra_fields", {})
+        }
+        return json.dumps(log_data)
+```
+
+### 2. Logging in Core Functions
+
+The `answer_question` function now includes comprehensive logging:
+
+```python
+with LogContext(
+    logger,
+    question_length=len(question),
+    context_length=len(context),
+    model=cfg.model,
+    temperature=cfg.temperature,
+):
+    logger.info(f"Processing question: {question[:50]}...")
+
+    # Each step is logged
+    logger.debug("Validating inputs")
+    validate_input(question, context)
+
+    # Performance tracking
+    elapsed = time.time() - start_time
+    if elapsed > cfg.log_slow_request_threshold:
+        logger.warning(f"Slow request: {elapsed:.2f}s")
+```
+
+### 3. Debug Utilities
+
+Debug mode provides detailed execution tracking:
+
+```python
+# src/qa_chain/debug_utils.py
+with DebugContext() as ctx:
+    ctx.checkpoint("preprocessing", {"input_length": len(text)})
+    # ... processing ...
+    ctx.checkpoint("llm_call", {"model": "gpt-4"})
+    # ... LLM call ...
+    ctx.checkpoint("postprocessing", {"output_length": len(result)})
+```
+
+### 4. Request Tracking in API
+
+The API automatically tracks all requests with unique IDs:
+
+```python
+# examples/api_server.py
+@app.middleware("http")
+async def add_request_id(request: Request, call_next):
+    request_id = request.headers.get("X-Request-ID", str(uuid4()))
+    token = request_id_var.set(request_id)
+
+    logger.info(
+        f"Request started: {request.method} {request.url.path}",
+        extra={"extra_fields": {
+            "method": request.method,
+            "path": request.url.path,
+            "request_id": request_id
+        }}
+    )
+```
+
+### 5. Performance Monitoring
+
+Built-in decorators for tracking execution time:
+
+```python
+@log_execution_time()
+def process_data(data):
+    # Automatically logs execution time
+    return transform(data)
+
+@trace_llm_call
+def call_openai(prompt):
+    # Traces LLM API calls with timing
+    return openai.chat.completions.create(...)
+```
+
+### 6. Debug Information Dumps
+
+Save detailed session information for analysis:
+
+```python
+dump_debug_info(
+    question=question,
+    context=context,
+    answer=answer,
+    config=config,
+    execution_time=elapsed,
+    filename="debug_session.json"
+)
 ```
 
 ## API Implementation

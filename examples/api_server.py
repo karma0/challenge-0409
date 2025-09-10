@@ -3,10 +3,12 @@
 
 import os
 import sys
+import time
 from pathlib import Path
 from typing import Optional
+from uuid import uuid4
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
@@ -14,6 +16,11 @@ from pydantic import BaseModel, Field
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from qa_chain import QAConfig, SecurityError, answer_question
+from qa_chain.logging_config import get_logger, request_id_var, setup_logging
+
+# Initialize logging
+setup_logging()
+logger = get_logger(__name__)
 
 # Create FastAPI app
 app = FastAPI(
@@ -30,6 +37,62 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+# Middleware for request ID tracking
+@app.middleware("http")
+async def add_request_id(request: Request, call_next):
+    """Add request ID to all requests for tracking."""
+    request_id = request.headers.get("X-Request-ID", str(uuid4()))
+    token = request_id_var.set(request_id)
+
+    start_time = time.time()
+    logger.info(
+        f"Request started: {request.method} {request.url.path}",
+        extra={
+            "extra_fields": {
+                "method": request.method,
+                "path": request.url.path,
+                "request_id": request_id,
+            }
+        },
+    )
+
+    try:
+        response = await call_next(request)
+        elapsed = time.time() - start_time
+        logger.info(
+            f"Request completed: {request.method} {request.url.path} - {response.status_code}",
+            extra={
+                "extra_fields": {
+                    "method": request.method,
+                    "path": request.url.path,
+                    "status_code": response.status_code,
+                    "duration_ms": int(elapsed * 1000),
+                    "request_id": request_id,
+                }
+            },
+        )
+        response.headers["X-Request-ID"] = request_id
+        return response
+    except Exception as e:
+        elapsed = time.time() - start_time
+        logger.error(
+            f"Request failed: {request.method} {request.url.path} - {str(e)}",
+            extra={
+                "extra_fields": {
+                    "method": request.method,
+                    "path": request.url.path,
+                    "duration_ms": int(elapsed * 1000),
+                    "error": str(e),
+                    "request_id": request_id,
+                }
+            },
+            exc_info=True,
+        )
+        raise
+    finally:
+        request_id_var.reset(token)
 
 
 class QARequest(BaseModel):
@@ -68,6 +131,7 @@ class ErrorResponse(BaseModel):
 @app.get("/")
 async def root():
     """Root endpoint with API information."""
+    logger.debug("Root endpoint accessed")
     return {
         "message": "QA Chain API",
         "docs": "/docs",
@@ -82,8 +146,14 @@ async def health():
     # Check if API key is configured
     api_key = os.getenv("OPENAI_API_KEY") or os.getenv("AZURE_OPENAI_API_KEY")
 
+    status = "healthy" if api_key else "unhealthy"
+    logger.info(
+        f"Health check: {status}",
+        extra={"extra_fields": {"api_key_configured": bool(api_key)}},
+    )
+
     return {
-        "status": "healthy" if api_key else "unhealthy",
+        "status": status,
         "api_key_configured": bool(api_key),
         "message": (
             "API key not configured" if not api_key else "Ready to process requests"
@@ -108,6 +178,18 @@ async def answer_endpoint(request: QARequest):
     This endpoint processes a question and context through an LLM to generate
     an answer based solely on the provided context.
     """
+    logger.info(
+        "Answer request received",
+        extra={
+            "extra_fields": {
+                "question_length": len(request.question),
+                "context_length": len(request.context),
+                "model": request.model,
+                "temperature": request.temperature,
+            }
+        },
+    )
+
     try:
         # Create config from request
         config = QAConfig(
@@ -117,10 +199,16 @@ async def answer_endpoint(request: QARequest):
         )
 
         # Get answer
+        logger.debug("Calling answer_question function")
         answer = answer_question(
             question=request.question,
             context=request.context,
             config=config,
+        )
+
+        logger.info(
+            "Answer generated successfully",
+            extra={"extra_fields": {"answer_length": len(answer)}},
         )
 
         return QAResponse(
@@ -131,15 +219,32 @@ async def answer_endpoint(request: QARequest):
 
     except SecurityError as e:
         # Security violations (rate limiting, input validation)
-        raise HTTPException(
-            status_code=429 if "rate limit" in str(e).lower() else 400,
-            detail=str(e),
+        is_rate_limit = "rate limit" in str(e).lower()
+        status_code = 429 if is_rate_limit else 400
+        logger.warning(
+            f"Security error: {str(e)}",
+            extra={
+                "extra_fields": {
+                    "error_type": "rate_limit" if is_rate_limit else "security",
+                    "status_code": status_code,
+                }
+            },
         )
+        raise HTTPException(status_code=status_code, detail=str(e))
     except ValueError as e:
         # Invalid configuration
+        logger.warning(
+            f"Validation error: {str(e)}",
+            extra={"extra_fields": {"error_type": "validation", "status_code": 422}},
+        )
         raise HTTPException(status_code=422, detail=str(e))
     except Exception as e:
         # Other errors
+        logger.error(
+            f"Internal error: {str(e)}",
+            extra={"extra_fields": {"error_type": "internal", "status_code": 500}},
+            exc_info=True,
+        )
         raise HTTPException(
             status_code=500,
             detail=f"Internal error: {str(e)}",
