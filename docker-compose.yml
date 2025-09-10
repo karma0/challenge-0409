@@ -1,8 +1,13 @@
 version: '3.8'
 
 services:
-  qa-chain:
-    build: .
+  qa-api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    image: qa-api:latest
+    ports:
+      - "8000:8000"
     environment:
       # OpenAI Configuration
       - OPENAI_API_KEY=${OPENAI_API_KEY}
@@ -14,5 +19,9 @@ services:
       - AZURE_OPENAI_API_VERSION=${AZURE_OPENAI_API_VERSION}
     volumes:
       - ./src:/app/src:ro
-      - ./examples:/app/examples:ro
-    command: ["--question", "What is the capital of France?", "--context", "Paris is the capital of France."]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health').read()"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s

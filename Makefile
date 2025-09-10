@@ -82,12 +82,24 @@ docker-run: ## Run example in Docker container
 	./docker-run.sh --question "What is the capital of France?" --context "Paris is the capital of France."
 
 .PHONY: docker-compose-run
-docker-compose-run: ## Run with docker-compose (ARGS="--question ...")
-	docker compose run --rm qa-chain $(ARGS)
+docker-compose-run: ## Run API with docker-compose
+	docker compose up
+
+.PHONY: docker-api-build
+docker-api-build: ## Build API Docker image
+	docker build -f Dockerfile.api -t qa-api:latest .
+
+.PHONY: docker-api-run
+docker-api-run: ## Run API server in Docker
+	docker compose up
+
+.PHONY: docker-api-dev
+docker-api-dev: ## Run API with hot reload for development
+	docker compose run --rm -p 8000:8000 -v $$(pwd)/examples:/app/examples qa-api
 
 .PHONY: docker-clean
 docker-clean: ## Remove Docker images and volumes
-	-docker rmi qa-chain:latest
+	-docker rmi qa-chain:latest qa-api:latest
 	-docker compose down -v
 
 # Examples
@@ -106,6 +118,14 @@ run-simple: ## Run basic example (no args needed)
 		exit 1; \
 	fi
 	python examples/simple_qa.py
+
+.PHONY: run-api
+run-api: ## Run API server locally (port 8000)
+	@if [ -z "$$OPENAI_API_KEY" ]; then \
+		echo "Error: OPENAI_API_KEY is not set"; \
+		exit 1; \
+	fi
+	python examples/api_server.py
 
 # Cleanup
 .PHONY: clean

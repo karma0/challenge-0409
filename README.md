@@ -88,6 +88,20 @@ python -m examples.run --question "What is the capital of France?" --context "Pa
 python examples/simple_qa.py
 ```
 
+### REST API
+
+```bash
+# Start the API server
+make run-api
+
+# Make a request
+curl -X POST "http://localhost:8000/answer" \
+  -H "Content-Type: application/json" \
+  -d '{"question": "What is the capital?", "context": "Paris is the capital of France."}'
+```
+
+See [API.md](API.md) for full API documentation.
+
 ---
 
 ## Project layout
@@ -112,9 +126,17 @@ README.md
 
 Run the application without managing Python environments:
 
+### CLI Mode
 ```bash
 export OPENAI_API_KEY=sk-...
 ./docker-run.sh --question "What is the capital of France?" --context "Paris is the capital of France."
+```
+
+### API Mode
+```bash
+export OPENAI_API_KEY=sk-...
+docker compose up
+# API available at http://localhost:8000
 ```
 
 See [DOCKER.md](DOCKER.md) for detailed Docker instructions.
