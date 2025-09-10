@@ -13,6 +13,7 @@ from .config import QAConfig
 from .logging_config import LogContext, get_logger, setup_logging
 from .prompts import build_prompt
 from .rate_limiter import check_rate_limit
+from .retry import RetryError, RetryPolicy
 from .security import sanitize_output, validate_config, validate_input
 
 # Initialize logger
@@ -68,6 +69,63 @@ def build_chain(config: QAConfig) -> Any:
     prompt = build_prompt()
     llm = ChatOpenAI(model=config.model, temperature=config.temperature)
     return preprocess | prompt | llm | StrOutputParser()
+
+
+def _invoke_chain_with_retry(
+    chain: Any, question: str, context: str, config: QAConfig
+) -> str:
+    """Invoke the chain with retry logic if enabled.
+
+    Args:
+        chain: The LangChain pipeline
+        question: The question to answer
+        context: The context to use
+        config: Configuration including retry settings
+
+    Returns:
+        The model's response
+
+    Raises:
+        RetryError: If all retry attempts fail
+        Exception: If retry is disabled or error is non-retriable
+    """
+    if not config.enable_retry:
+        # No retry - just invoke directly
+        result: str = chain.invoke({"question": question, "context": context})
+        return result
+
+    # Create retry policy from config
+    retry_policy = RetryPolicy(
+        max_attempts=config.max_retry_attempts,
+        base_delay=config.retry_base_delay,
+        max_delay=config.retry_max_delay,
+        exponential_base=config.retry_exponential_base,
+        jitter=config.retry_jitter,
+    )
+
+    # Define the function to retry
+    @retry_policy.as_decorator()
+    def invoke_with_retry() -> str:
+        result: str = chain.invoke({"question": question, "context": context})
+        return result
+
+    try:
+        retry_result: str = invoke_with_retry()
+        return retry_result
+    except RetryError as e:
+        logger.error(
+            "All retry attempts exhausted",
+            extra={
+                "extra_fields": {
+                    "max_attempts": config.max_retry_attempts,
+                    "last_error": str(e.last_error) if e.last_error else None,
+                }
+            },
+        )
+        # Re-raise the last error for better error messages
+        if e.last_error:
+            raise e.last_error
+        raise
 
 
 def answer_question(question: str, context: str, config: QAConfig | None = None) -> str:
@@ -136,7 +194,7 @@ def answer_question(question: str, context: str, config: QAConfig | None = None)
             chain = build_chain(cfg)
 
             logger.info("Invoking LLM chain")
-            result: str = chain.invoke({"question": question, "context": context})
+            result: str = _invoke_chain_with_retry(chain, question, context, cfg)
 
             # Sanitize output before returning
             logger.debug("Sanitizing output")

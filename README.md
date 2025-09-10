@@ -29,6 +29,7 @@ Beyond the basic requirements, this implementation includes:
 
 - **Security**: Input validation, output sanitization, and injection protection
 - **Rate limiting**: Configurable request throttling
+- **Retry logic**: Automatic retry with exponential backoff for transient failures
 - **Flexible configuration**: Temperature, model selection, and context limits
 - **Logging & Debugging**: Structured JSON logging, request tracking, and debug utilities
 - **Docker support**: Ready for containerized deployment
@@ -183,6 +184,7 @@ See [Security documentation](docs/SECURITY.md) for detailed security documentati
 - [API Documentation](docs/API.md) - REST API endpoints and usage
 - [Security Guide](docs/SECURITY.md) - Security features and best practices
 - [Logging & Debugging](docs/LOGGING.md) - Structured logging and debug utilities
+- [Retry & Error Handling](docs/RETRY.md) - Retry logic and error recovery
 - [Docker Guide](docs/DOCKER.md) - Container deployment instructions
 - [Spec Compliance](docs/SPEC_COMPLIANCE_SUMMARY.md) - Challenge specification compliance
 

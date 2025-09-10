@@ -44,3 +44,23 @@ class QAConfig(BaseModel):
     log_slow_request_threshold: float = Field(
         default=1.0, ge=0.1, description="Threshold in seconds for slow request logging"
     )
+
+    # Retry configuration
+    enable_retry: bool = Field(
+        default=True, description="Enable automatic retry for failed API calls"
+    )
+    max_retry_attempts: int = Field(
+        default=3, ge=1, le=5, description="Maximum number of retry attempts"
+    )
+    retry_base_delay: float = Field(
+        default=1.0, ge=0.1, description="Base delay between retries in seconds"
+    )
+    retry_max_delay: float = Field(
+        default=60.0, ge=1.0, description="Maximum delay between retries in seconds"
+    )
+    retry_exponential_base: float = Field(
+        default=2.0, ge=1.5, le=3.0, description="Base for exponential backoff"
+    )
+    retry_jitter: bool = Field(
+        default=True, description="Add random jitter to retry delays"
+    )

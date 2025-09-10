@@ -98,6 +98,28 @@ The heart of the application is the `answer_question()` function that:
 - Format and length checks
 - Environment variable security
 
+### 5. Retry Logic and Error Recovery
+
+**Automatic Retry on Failures**:
+- Exponential backoff with configurable delays
+- Jitter to prevent thundering herd
+- Smart error detection (retriable vs non-retriable)
+- Configurable retry attempts (1-5)
+- Comprehensive retry logging
+
+**Retriable Conditions**:
+- Connection errors and timeouts
+- Rate limiting (HTTP 429)
+- Server errors (HTTP 5xx)
+- Temporary service unavailability
+- Network issues
+
+**Configuration Options**:
+- Enable/disable retry per request
+- Customizable base and max delays
+- Exponential backoff factor
+- Jitter control
+
 ## API Capabilities
 
 ### 1. FastAPI REST API
