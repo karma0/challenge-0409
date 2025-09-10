@@ -60,16 +60,32 @@ def build_chain(config: QAConfig) -> Any:
 def answer_question(question: str, context: str, config: QAConfig | None = None) -> str:
     """Answer a user's question using ONLY the provided context.
 
+    This function implements the challenge spec requirements:
+    1. Accepts two inputs: a question and context paragraph
+    2. Integrates OpenAI LLM to generate answers
+    3. Preprocesses inputs (normalizes whitespace, handles special chars)
+    4. Returns formatted answer as a string
+
     Args:
         question: The user's question (string).
         context: A paragraph (or more) with the relevant context.
         config: Optional QAConfig to control model, temperature, and max_context_chars.
+                If not provided, uses sensible defaults.
 
     Returns:
-        The model's answer as a plain string.
+        The model's answer as a plain string. If the answer cannot be found
+        in the context, returns "I don't know based on the provided context."
 
     Raises:
         SecurityError: If inputs or config violate security constraints.
+
+    Example:
+        >>> answer = answer_question(
+        ...     "What is the capital?",
+        ...     "Paris is the capital of France."
+        ... )
+        >>> print(answer)
+        'Paris' or 'The capital is Paris.'
     """
     cfg = config or QAConfig()
 

@@ -1,21 +1,41 @@
-
 # LangChain QA Challenge
 
-A small, production-ready chain that takes a user's **question** and a **context paragraph** and returns an answer using a language model (OpenAI via `langchain-openai`).
+A chain that takes a user's **question** and a **context paragraph** and returns an answer using a language model.
 
-## Features
+## Core Functionality (Challenge Spec)
 
-- Modern **LangChain Expression Language** pipeline: `preprocess → prompt → llm → StrOutputParser`.
-- Clean public function: `answer_question(question, context, config)`.
-- Minimal input preprocessing (whitespace + smart quotes) and safe **context clipping**.
-- Prompt instructs the model to use **only the provided context**, otherwise answer *"I don't know based on the provided context."*
-- **Security features**: Input validation, output sanitization, rate limiting, and injection protection
+The application provides a simple function that meets the challenge requirements:
+
+```python
+from qa_chain import answer_question
+
+# Basic usage - just question and context
+answer = answer_question(
+    question="What is the capital of France?",
+    context="Paris is the capital of France."
+)
+print(answer)  # -> "Paris" or "The capital of France is Paris."
+```
+
+### Challenge Requirements Met
+1. ✅ **Two inputs**: Accepts a question and context paragraph
+2. ✅ **LLM Integration**: Uses OpenAI's chat completion API via LangChain
+3. ✅ **Input preprocessing**: Normalizes whitespace and handles special characters
+4. ✅ **Formatted output**: Returns a clean string answer
+
+## Production Features
+
+Beyond the basic requirements, this implementation includes:
+
+- **Security**: Input validation, output sanitization, and injection protection
+- **Rate limiting**: Configurable request throttling
+- **Flexible configuration**: Temperature, model selection, and context limits
+- **Docker support**: Ready for containerized deployment
+- **Development tools**: Linting, testing, and pre-commit hooks
 
 ---
 
-## Quickstart
-
-### Setup
+## Setup
 
 ```bash
 # Create and activate virtual environment
@@ -32,14 +52,21 @@ cp .env.example .env
 export OPENAI_API_KEY=sk-...
 ```
 
-### Running the CLI
+## Basic Usage
 
-```bash
-# Simple CLI demo
-python -m examples.run --question "What is the capital of France?" --context "Paris is the capital of France."
+### Simplest Form
+
+```python
+from qa_chain import answer_question
+
+answer = answer_question(
+    "Who wrote 1984?",
+    "The novel '1984' was written by George Orwell."
+)
+print(answer)  # -> "George Orwell"
 ```
 
-### Programmatic usage
+### With Configuration
 
 ```python
 from qa_chain import answer_question, QAConfig
@@ -49,7 +76,16 @@ answer = answer_question(
     context="The novel '1984' was written by George Orwell.",
     config=QAConfig(model="gpt-4o-mini", temperature=0.2)
 )
-print(answer)  # -> "George Orwell."
+```
+
+### Command Line
+
+```bash
+# Using the provided CLI
+python -m examples.run --question "What is the capital of France?" --context "Paris is the capital of France."
+
+# Or use the simple example
+python examples/simple_qa.py
 ```
 
 ---
@@ -104,4 +140,3 @@ See [SECURITY.md](SECURITY.md) for detailed security documentation.
 - **Streaming**: This minimal version returns a single string. It's easy to extend to streaming by swapping in a streaming-friendly runner.
 - **Azure OpenAI**: You can point `langchain-openai` at Azure by setting the corresponding environment variables (`AZURE_OPENAI_API_KEY`, `AZURE_OPENAI_ENDPOINT`, etc.).
 - **Safety**: The prompt is constrained to the provided context; the chain will admit uncertainty if the answer isn't in the context.
-```
