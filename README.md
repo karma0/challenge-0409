@@ -100,7 +100,7 @@ curl -X POST "http://localhost:8000/answer" \
   -d '{"question": "What is the capital?", "context": "Paris is the capital of France."}'
 ```
 
-See [API.md](API.md) for full API documentation.
+See [API documentation](docs/API.md) for full API documentation.
 
 ---
 
@@ -110,14 +110,29 @@ See [API.md](API.md) for full API documentation.
 src/qa_chain/
   ├─ __init__.py
   ├─ chain.py
+  ├─ config.py
   ├─ prompts.py
-  └─ config.py
+  ├─ rate_limiter.py
+  └─ security.py
 examples/
-  └─ run.py
+  ├─ api_server.py
+  ├─ run.py
+  └─ simple_qa.py
 tests/
-  └─ test_chain.py
-requirements.txt
-README.md
+  ├─ test_api.py
+  ├─ test_chain.py
+  ├─ test_context_clipping.py
+  ├─ test_dotenv.py
+  ├─ test_integration.py
+  ├─ test_preprocessing.py
+  ├─ test_rate_limiter.py
+  ├─ test_security.py
+  └─ test_spec_compliance.py
+docs/
+  ├─ API.md
+  ├─ DOCKER.md
+  ├─ SECURITY.md
+  └─ SPEC_COMPLIANCE_SUMMARY.md
 ```
 
 ---
@@ -139,7 +154,7 @@ docker compose up
 # API available at http://localhost:8000
 ```
 
-See [DOCKER.md](DOCKER.md) for detailed Docker instructions.
+See [Docker documentation](docs/DOCKER.md) for detailed Docker instructions.
 
 ---
 
@@ -152,7 +167,7 @@ The application includes comprehensive security features:
 - **Rate Limiting**: Configurable per-deployment rate limits
 - **API Key Validation**: Ensures proper API key format and presence
 
-See [SECURITY.md](SECURITY.md) for detailed security documentation.
+See [Security documentation](docs/SECURITY.md) for detailed security documentation.
 
 ---
 
