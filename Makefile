@@ -146,3 +146,11 @@ ci: ## Run CI checks (lint, type-check, test)
 
 .PHONY: pre-commit
 pre-commit: fix check ## Run before committing (fix and check)
+
+.PHONY: pre-push
+pre-push: ## Run pre-push validation (tests with coverage threshold)
+	@echo "Running pre-push validation..."
+	@echo "Running tests..."
+	@make test
+	@echo "Checking test coverage (minimum 90%)..."
+	PYTHONPATH=src pytest tests/ --cov=src/qa_chain --cov-report=term --cov-fail-under=90

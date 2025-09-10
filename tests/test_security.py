@@ -139,3 +139,126 @@ def test_security_integration():
             "Valid context",
             QAConfig(model="gpt-2", temperature=0),  # Invalid model
         )
+
+
+class TestAdditionalSecurity:
+    """Additional security tests for better coverage."""
+
+    def test_validate_input_with_urls(self):
+        """Test that URLs in inputs are handled."""
+        from qa_chain.security import validate_input
+
+        # Javascript URLs should be flagged
+        with pytest.raises(SecurityError, match="blocked content"):
+            validate_input("Click javascript:alert(1)", "Normal context")
+
+    def test_validate_config_edge_cases(self):
+        """Test config validation edge cases."""
+        from qa_chain.security import validate_config
+
+        # Test temperature out of range (Pydantic allows up to 2.0, but security check is stricter)
+        # Temperature of 1.5 is allowed by Pydantic but not by security check
+        config = QAConfig(temperature=1.5)
+        with pytest.raises(SecurityError, match="Temperature must be between"):
+            validate_config(config)
+
+        # Test max context too large
+        from qa_chain.security import MAX_CONTEXT_LENGTH
+
+        config = QAConfig(max_context_chars=MAX_CONTEXT_LENGTH + 1)
+        with pytest.raises(SecurityError, match="cannot exceed"):
+            validate_config(config)
+
+    def test_sanitize_output_edge_cases(self):
+        """Test output sanitization edge cases."""
+        from qa_chain.security import sanitize_output
+
+        # Test empty string
+        assert sanitize_output("") == ""
+
+        # Test multiple security issues
+        dirty = "<script>alert(1)</script><iframe>bad</iframe>sk-12345678901234567890123456789012345678901234567890"
+        clean = sanitize_output(dirty)
+        assert "<script>" not in clean
+        assert "<iframe>" not in clean
+        assert "sk-" not in clean
+        assert "[REDACTED]" in clean
+
+    def test_api_key_validation(self):
+        """Test API key validation."""
+        import os
+
+        from qa_chain.security import validate_api_keys
+
+        # Save original env vars
+        original_openai = os.environ.get("OPENAI_API_KEY")
+        original_azure = os.environ.get("AZURE_OPENAI_API_KEY")
+
+        try:
+            # Test with no keys
+            os.environ.pop("OPENAI_API_KEY", None)
+            os.environ.pop("AZURE_OPENAI_API_KEY", None)
+            with pytest.raises(SecurityError, match="No API key found"):
+                validate_api_keys()
+
+            # Test with short key
+            os.environ["OPENAI_API_KEY"] = "short"
+            with pytest.raises(SecurityError, match="too short"):
+                validate_api_keys()
+
+            # Test with invalid characters
+            os.environ["OPENAI_API_KEY"] = "invalid@key#with$special"
+            with pytest.raises(SecurityError, match="invalid characters"):
+                validate_api_keys()
+
+            # Test with valid key
+            os.environ["OPENAI_API_KEY"] = "sk-1234567890abcdef1234567890abcdef"
+            validate_api_keys()  # Should not raise
+
+            # Test Azure key validation
+            os.environ.pop("OPENAI_API_KEY", None)
+            os.environ["AZURE_OPENAI_API_KEY"] = "short"
+            with pytest.raises(SecurityError, match="too short"):
+                validate_api_keys()
+
+            # Test Azure with missing endpoint
+            os.environ["AZURE_OPENAI_API_KEY"] = "valid-azure-key-1234567890"
+            os.environ.pop("AZURE_OPENAI_ENDPOINT", None)
+            with pytest.raises(
+                SecurityError, match="AZURE_OPENAI_ENDPOINT must be set"
+            ):
+                validate_api_keys()
+
+            # Test with valid Azure config
+            os.environ["AZURE_OPENAI_ENDPOINT"] = "https://example.openai.azure.com"
+            validate_api_keys()  # Should not raise
+
+        finally:
+            # Restore original env vars
+            if original_openai:
+                os.environ["OPENAI_API_KEY"] = original_openai
+            else:
+                os.environ.pop("OPENAI_API_KEY", None)
+            if original_azure:
+                os.environ["AZURE_OPENAI_API_KEY"] = original_azure
+
+    def test_get_secure_env_var(self):
+        """Test secure environment variable retrieval."""
+        import os
+
+        from qa_chain.security import get_secure_env_var
+
+        # Test with API key validation
+        os.environ["TEST_KEY"] = "short"
+        assert get_secure_env_var("TEST_KEY") is None  # Too short
+
+        os.environ["TEST_KEY"] = "valid-api-key-1234567890"
+        assert get_secure_env_var("TEST_KEY") == "valid-api-key-1234567890"
+
+        # Test with non-key env var
+        os.environ["TEST_VAR"] = "any value"
+        assert get_secure_env_var("TEST_VAR") == "any value"
+
+        # Clean up
+        os.environ.pop("TEST_KEY", None)
+        os.environ.pop("TEST_VAR", None)
