@@ -131,8 +131,11 @@ tests/
 docs/
   ├─ API.md
   ├─ DOCKER.md
+  ├─ FEATURES.md
+  ├─ PYTHON_STANDARDS.md
   ├─ SECURITY.md
-  └─ SPEC_COMPLIANCE_SUMMARY.md
+  ├─ SPEC_COMPLIANCE_SUMMARY.md
+  └─ WALKTHROUGH.md
 ```
 
 ---
@@ -168,6 +171,18 @@ The application includes comprehensive security features:
 - **API Key Validation**: Ensures proper API key format and presence
 
 See [Security documentation](docs/SECURITY.md) for detailed security documentation.
+
+---
+
+## Documentation
+
+- [Features Overview](docs/FEATURES.md) - Comprehensive overview of all features and capabilities
+- [Code Walkthrough](docs/WALKTHROUGH.md) - Detailed guide through the codebase implementation
+- [Python Standards](docs/PYTHON_STANDARDS.md) - Documentation of Python standards compliance
+- [API Documentation](docs/API.md) - REST API endpoints and usage
+- [Security Guide](docs/SECURITY.md) - Security features and best practices
+- [Docker Guide](docs/DOCKER.md) - Container deployment instructions
+- [Spec Compliance](docs/SPEC_COMPLIANCE_SUMMARY.md) - Challenge specification compliance
 
 ---
 

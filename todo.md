@@ -13,3 +13,6 @@
 * Perform full audit on documentation
 * Relocate documentation
 <!-- * Remove qa-cli -->
+* Add logging and debugging
+* Add in retry logic for API failures
+* Create developer getting started in README
