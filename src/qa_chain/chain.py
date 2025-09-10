@@ -10,6 +10,8 @@ from langchain_openai import ChatOpenAI
 
 from .config import QAConfig
 from .prompts import build_prompt
+from .rate_limiter import check_rate_limit
+from .security import sanitize_output, validate_config, validate_input
 
 
 def _normalize_text(s: str) -> str:
@@ -65,8 +67,23 @@ def answer_question(question: str, context: str, config: QAConfig | None = None)
 
     Returns:
         The model's answer as a plain string.
+
+    Raises:
+        SecurityError: If inputs or config violate security constraints.
     """
     cfg = config or QAConfig()
+
+    # Validate inputs and configuration
+    validate_input(question, context)
+    validate_config(cfg)
+
+    # Check rate limit if enabled
+    if cfg.enable_rate_limiting:
+        check_rate_limit(cfg.rate_limit_identifier)
+
+    # Build and run the chain
     chain = build_chain(cfg)
     result: str = chain.invoke({"question": question, "context": context})
-    return result
+
+    # Sanitize output before returning
+    return sanitize_output(result)

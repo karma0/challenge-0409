@@ -9,6 +9,7 @@ A small, production-ready chain that takes a user's **question** and a **context
 - Clean public function: `answer_question(question, context, config)`.
 - Minimal input preprocessing (whitespace + smart quotes) and safe **context clipping**.
 - Prompt instructs the model to use **only the provided context**, otherwise answer *"I don't know based on the provided context."*
+- **Security features**: Input validation, output sanitization, rate limiting, and injection protection
 
 ---
 
@@ -81,6 +82,19 @@ export OPENAI_API_KEY=sk-...
 ```
 
 See [DOCKER.md](DOCKER.md) for detailed Docker instructions.
+
+---
+
+## Security
+
+The application includes comprehensive security features:
+
+- **Input Validation**: Prevents injection attacks and enforces reasonable limits
+- **Output Sanitization**: Removes potentially harmful content from responses
+- **Rate Limiting**: Configurable per-deployment rate limits
+- **API Key Validation**: Ensures proper API key format and presence
+
+See [SECURITY.md](SECURITY.md) for detailed security documentation.
 
 ---
 

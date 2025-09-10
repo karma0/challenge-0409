@@ -1,5 +1,7 @@
 """Test preprocessing functionality."""
 
+import pytest
+
 from qa_chain import QAConfig, answer_question
 
 
@@ -53,12 +55,14 @@ def test_answer_no_context():
 
 def test_empty_inputs():
     """Test handling of empty inputs."""
+    from qa_chain import SecurityError
+
     config = QAConfig(temperature=0.0)
 
-    # Empty question
-    answer = answer_question("", "Some context", config)
-    assert isinstance(answer, str)
+    # Empty question should raise SecurityError
+    with pytest.raises(SecurityError):
+        answer_question("", "Some context", config)
 
-    # Empty context
+    # Empty context should work (returns "don't know")
     answer = answer_question("Some question", "", config)
     assert isinstance(answer, str)

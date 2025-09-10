@@ -13,4 +13,9 @@ class QAConfig(BaseModel):
         ge=500,
         description="Max characters from context to include in prompt",
     )
-    # You can add more knobs (top_p, seed, etc.) as needed.
+    enable_rate_limiting: bool = Field(
+        default=True, description="Enable rate limiting for API calls"
+    )
+    rate_limit_identifier: str = Field(
+        default="global", description="Identifier for rate limiting (e.g., user ID)"
+    )

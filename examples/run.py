@@ -14,7 +14,7 @@ SRC_PATH = PROJECT_ROOT / "src"
 if str(SRC_PATH) not in sys.path:
     sys.path.insert(0, str(SRC_PATH))
 
-from qa_chain import QAConfig, answer_question  # noqa: E402
+from qa_chain import QAConfig, SecurityError, answer_question  # noqa: E402
 
 
 def main():
@@ -34,14 +34,21 @@ def main():
     parser.add_argument("--max-context-chars", type=int, default=6000)
     args = parser.parse_args()
 
-    config = QAConfig(
-        model=args.model,
-        temperature=args.temperature,
-        max_context_chars=args.max_context_chars,
-    )
+    try:
+        config = QAConfig(
+            model=args.model,
+            temperature=args.temperature,
+            max_context_chars=args.max_context_chars,
+        )
 
-    answer = answer_question(args.question, args.context, config=config)
-    print(answer)
+        answer = answer_question(args.question, args.context, config=config)
+        print(answer)
+    except SecurityError as e:
+        print(f"Security Error: {e}", file=sys.stderr)
+        sys.exit(1)
+    except Exception as e:
+        print(f"Error: {e}", file=sys.stderr)
+        sys.exit(1)
 
 
 if __name__ == "__main__":
